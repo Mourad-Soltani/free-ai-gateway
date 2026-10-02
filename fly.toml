@@ -1,0 +1,44 @@
+# Free AI Gateway — Fly.io demo
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+# Deploy: fly launch --copy-config --no-deploy && fly secrets set ... && fly deploy
+
+app = "free-ai-gateway-demo"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile.fly"
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8080"
+  WORKERS = "1"
+  LITELLM_LOG = "INFO"
+  FREE_AI_DB_PATH = "/data/api_limits.db"
+  CONTROL_PLANE_DB = "/data/control_plane.db"
+  GATEWAY_URL = "http://127.0.0.1:4000"
+  CONTROL_PLANE_PORT = "8080"
+  DEMO_MODE = "true"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "60s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[mounts]
+  source = "fag_data"
+  destination = "/data"

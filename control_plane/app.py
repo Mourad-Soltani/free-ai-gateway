@@ -20,6 +20,7 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from control_plane.db import ControlPlaneDB
@@ -41,6 +42,24 @@ app = FastAPI(
     title="Free AI Gateway — Control Plane",
     version="0.1.0",
     description="Multi-tenant virtual keys + budgets in front of LiteLLM free-tier router.",
+)
+
+def _cors_origins() -> list[str]:
+    if os.getenv("DEMO_MODE", "").lower() in {"1", "true", "yes"}:
+        return ["*"]
+    raw = os.getenv(
+        "CORS_ORIGINS",
+        "https://mourad-soltani.github.io,http://localhost:8080,http://127.0.0.1:8080",
+    )
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=os.getenv("DEMO_MODE", "").lower() not in {"1", "true", "yes"},
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
