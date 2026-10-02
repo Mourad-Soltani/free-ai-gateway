@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.1] — 2026-10-02
+### Added
+- `landing/index.html` — product landing page (features, providers, agent demo, pricing)
+- `agents/agent.py` — Free AI Gateway native multi-step tool agent
+- `agents/README.md` — agent usage and tool catalogue
+
 ## [1.2.0] — 2026-01-15
 ### Added
 - Trademark notice (TRADEMARK.md)

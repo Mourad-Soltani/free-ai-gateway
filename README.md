@@ -21,6 +21,8 @@ streaming, Prometheus metrics, and health probes.
 | Streaming | Sync + async clients |
 | Observability | Prometheus /metrics, health probes |
 | Zero-trust | Master-key auth required |
+| Landing page | `landing/index.html` — product site |
+| AI agent | `agents/agent.py` — tool-using agent via gateway |
 
 ## Health probes
 
@@ -46,6 +48,7 @@ Exit codes: 0 healthy · 1 unreachable · 2 degraded · 3 DB error · 4 upstream
     ./run.sh
     python client.py --stats
     make health
+    python agents/agent.py --task "What is 17*3? Give UTC time too."
 
 Generate master key:
 
@@ -60,6 +63,22 @@ Generate master key:
 | free-llm-router-fallback-2 | OpenRouter llama-3.3-70b:free | 20 RPM / 50 RPD (1,000 after $10 credit) |
 
 Aggregate capacity: ~65 RPM / ~1,050–2,050 RPD.
+
+## Landing page
+
+Open the product page locally:
+
+    open landing/index.html
+    # or serve: python -m http.server 8080 --directory landing
+
+## AI agent
+
+Multi-step tool agent that routes through the gateway:
+
+    python agents/agent.py --task "Compute (10+5)*2 and show quota stats"
+    python agents/agent.py --interactive
+
+Tools: `utc_now`, `calculator`, `quota_stats`, `echo`. See [agents/README.md](agents/README.md).
 
 ## Commercial licensing
 

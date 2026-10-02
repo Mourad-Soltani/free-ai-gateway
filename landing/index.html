@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Free AI Gateway™ — OpenAI-compatible proxy that fuses free tiers of Groq, Gemini & OpenRouter with local quota accounting, failover, streaming and Prometheus metrics." />
+  <meta name="author" content="Mourad Soltani — Mourad Soltani Technologies™ @MST" />
+  <meta name="theme-color" content="#0a0e17" />
+  <title>Free AI Gateway™ — Fuse Free LLM Tiers into One Endpoint</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --bg-elevated: #111827;
+      --bg-card: #151c2c;
+      --border: #1e293b;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: #0ea5e9;
+      --green: #34d399;
+      --amber: #fbbf24;
+      --purple: #a78bfa;
+      --radius: 12px;
+      --font: "IBM Plex Sans", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { width: min(1100px, 92vw); margin: 0 auto; }
+
+    /* Nav */
+    nav {
+      position: sticky; top: 0; z-index: 50;
+      background: rgba(10, 14, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.9rem 0; gap: 1rem;
+    }
+    .logo {
+      font-weight: 700; font-size: 1.05rem; color: var(--text);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 1.5rem; align-items: center; font-size: 0.9rem; }
+    .nav-links a { color: var(--text-muted); }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.55rem 1.15rem; border-radius: 8px; font-weight: 600;
+      font-size: 0.9rem; border: none; cursor: pointer; transition: 0.15s ease;
+    }
+    .btn-primary { background: var(--accent); color: #0a0e17; }
+    .btn-primary:hover { background: #7dd3fc; text-decoration: none; }
+    .btn-ghost {
+      background: transparent; color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+
+    /* Hero */
+    .hero {
+      padding: 5rem 0 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: "";
+      position: absolute; inset: -20% -10% auto;
+      height: 70%;
+      background: radial-gradient(ellipse at 50% 0%, rgba(56, 189, 248, 0.12), transparent 60%);
+      pointer-events: none;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--accent); font-size: 0.8rem; font-weight: 500;
+      padding: 0.3rem 0.75rem; border-radius: 999px; margin-bottom: 1.25rem;
+    }
+    .hero h1 {
+      font-size: clamp(2.1rem, 5vw, 3.1rem);
+      font-weight: 700; line-height: 1.15; letter-spacing: -0.02em;
+      max-width: 18ch; margin-bottom: 1.25rem;
+    }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero-lead {
+      font-size: 1.15rem; color: var(--text-muted);
+      max-width: 52ch; margin-bottom: 2rem;
+    }
+    .hero-cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2.5rem; }
+    .hero-stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem; max-width: 560px;
+    }
+    .stat {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.15rem;
+    }
+    .stat strong { display: block; font-size: 1.35rem; color: var(--green); font-family: var(--mono); }
+    .stat span { font-size: 0.8rem; color: var(--text-muted); }
+
+    /* Sections */
+    section { padding: 4rem 0; }
+    .section-label {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+    }
+    h2 {
+      font-size: clamp(1.6rem, 3vw, 2rem); font-weight: 700;
+      letter-spacing: -0.02em; margin-bottom: 0.75rem;
+    }
+    .section-lead { color: var(--text-muted); max-width: 54ch; margin-bottom: 2.5rem; }
+
+    /* Feature grid */
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .feature {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.4rem 1.5rem;
+      transition: border-color 0.15s;
+    }
+    .feature:hover { border-color: rgba(56, 189, 248, 0.4); }
+    .feature-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: rgba(56, 189, 248, 0.12); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; margin-bottom: 0.9rem;
+    }
+    .feature h3 { font-size: 1.05rem; margin-bottom: 0.35rem; }
+    .feature p { font-size: 0.9rem; color: var(--text-muted); }
+
+    /* Providers table */
+    .table-wrap {
+      overflow-x: auto; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--bg-card);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 0.85rem 1.1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { color: var(--text-muted); font-weight: 500; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    tr:last-child td { border-bottom: none; }
+    td code { font-family: var(--mono); font-size: 0.82rem; color: var(--accent); }
+
+    /* Code block */
+    .code-block {
+      background: #0d1117; border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .code-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.55rem 1rem; background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted);
+    }
+    .code-block pre {
+      padding: 1.15rem 1.25rem; overflow-x: auto;
+      font-family: var(--mono); font-size: 0.85rem; line-height: 1.55;
+    }
+    .code-block .comment { color: #64748b; }
+    .code-block .cmd { color: var(--green); }
+    .code-block .flag { color: var(--amber); }
+
+    /* Agent demo */
+    .agent-panel {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .agent-header {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.85rem 1.15rem; border-bottom: 1px solid var(--border);
+      background: var(--bg-elevated);
+    }
+    .agent-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+    .agent-body { padding: 1.25rem; min-height: 180px; }
+    .chat-msg { margin-bottom: 1rem; font-size: 0.92rem; }
+    .chat-msg .role {
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 0.25rem;
+    }
+    .chat-msg.user .role { color: var(--accent); }
+    .chat-msg.agent .role { color: var(--purple); }
+    .chat-msg .bubble {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.75rem 1rem; max-width: 90%;
+    }
+    .agent-input-row {
+      display: flex; gap: 0.5rem; padding: 1rem 1.15rem;
+      border-top: 1px solid var(--border); background: var(--bg-elevated);
+    }
+    .agent-input-row input {
+      flex: 1; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.6rem 0.9rem; color: var(--text);
+      font-family: var(--font); font-size: 0.9rem;
+    }
+    .agent-input-row input:focus { outline: none; border-color: var(--accent); }
+    .agent-note {
+      font-size: 0.8rem; color: var(--text-muted); padding: 0 1.15rem 1rem;
+    }
+
+    /* Pricing */
+    .pricing {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+    }
+    .price-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.6rem 1.5rem;
+      display: flex; flex-direction: column;
+    }
+    .price-card.featured {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
+    }
+    .price-card h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
+    .price-card .price {
+      font-size: 1.75rem; font-weight: 700; font-family: var(--mono);
+      margin: 0.75rem 0 0.35rem;
+    }
+    .price-card .price small { font-size: 0.85rem; font-weight: 400; color: var(--text-muted); }
+    .price-card ul {
+      list-style: none; margin: 1.25rem 0 1.5rem; flex: 1;
+    }
+    .price-card li {
+      font-size: 0.9rem; color: var(--text-muted);
+      padding: 0.3rem 0; padding-left: 1.3rem; position: relative;
+    }
+    .price-card li::before {
+      content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 600;
+    }
+
+    /* CTA band */
+    .cta-band {
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.15), rgba(167, 139, 250, 0.1));
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: calc(var(--radius) + 4px);
+      padding: 2.5rem 2rem; text-align: center;
+    }
+    .cta-band h2 { margin-bottom: 0.5rem; }
+    .cta-band p { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 0 2rem; margin-top: 2rem;
+      font-size: 0.85rem; color: var(--text-muted);
+    }
+    .footer-inner {
+      display: flex; flex-wrap: wrap; justify-content: space-between;
+      gap: 1.5rem; align-items: flex-start;
+    }
+    .footer-brand strong { color: var(--text); }
+    .footer-links { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+
+    @media (max-width: 640px) {
+      .nav-links .hide-sm { display: none; }
+      .hero { padding: 3.5rem 0 3rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="container nav-inner">
+      <a href="#" class="logo">Free AI <span>Gateway</span>™</a>
+      <div class="nav-links">
+        <a href="#features" class="hide-sm">Features</a>
+        <a href="#providers" class="hide-sm">Providers</a>
+        <a href="#agent" class="hide-sm">Agent</a>
+        <a href="#pricing" class="hide-sm">Pricing</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway" class="btn btn-ghost">GitHub</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway#quickstart" class="btn btn-primary">Quickstart</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="container">
+      <div class="badge">v1.2.0 · Production-Ready · MIT</div>
+      <h1>Fuse free LLM tiers into <em>one</em> OpenAI endpoint</h1>
+      <p class="hero-lead">
+        Free AI Gateway™ routes Groq, Gemini, and OpenRouter free tiers through a single
+        high-availability proxy — with local SQLite quota accounting, automatic failover,
+        streaming, and Prometheus metrics.
+      </p>
+      <div class="hero-cta">
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway" class="btn btn-primary">Get the code →</a>
+        <a href="#agent" class="btn btn-ghost">Try the agent demo</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><strong>~65</strong><span>RPM aggregate free</span></div>
+        <div class="stat"><strong>~2k</strong><span>RPD with credit unlock</span></div>
+        <div class="stat"><strong>3</strong><span>providers · auto-failover</span></div>
+        <div class="stat"><strong>0</strong><span>cloud bill for base tier</span></div>
+      </div>
+    </div>
+  </header>
+
+  <section id="features">
+    <div class="container">
+      <div class="section-label">Capabilities</div>
+      <h2>Built for operators who refuse to overpay</h2>
+      <p class="section-lead">
+        Drop-in OpenAI-compatible base URL. Atomic quota reservations. Full-jitter backoff.
+        Production health probes. Zero telemetry by default.
+      </p>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">⇄</div>
+          <h3>Automatic failover</h3>
+          <p>Groq → Gemini → OpenRouter with circular fallbacks. Transient errors retry with Retry-After honouring.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">▣</div>
+          <h3>Local quota ledger</h3>
+          <p>SQLite WAL tracks RPM + RPD per provider. BEGIN IMMEDIATE prevents overshoot under concurrency.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <h3>Streaming clients</h3>
+          <p>Sync and asyncio clients with stream support. Same API surface as OpenAI SDK.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">◉</div>
+          <h3>Observability</h3>
+          <p>Prometheus /metrics, liveliness / readiness / startup probes, deep upstream checks.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔒</div>
+          <h3>Zero-trust auth</h3>
+          <p>Master-key required. Non-root Docker, systemd hardening, metrics locked to private nets.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🤖</div>
+          <h3>Demo AI agent</h3>
+          <p>Ship-ready tool-using agent that routes every call through the free gateway.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="providers">
+    <div class="container">
+      <div class="section-label">2026 verified ceilings</div>
+      <h2>Free capacity that actually compounds</h2>
+      <p class="section-lead">
+        Model names are gateway aliases. Upstream free limits are tracked locally so you stay inside the envelope.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Gateway model</th>
+              <th>Upstream</th>
+              <th>RPM</th>
+              <th>RPD</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>free-llm-router</code></td>
+              <td>Groq · llama-3.3-70b-versatile</td>
+              <td>30</td>
+              <td>1,000</td>
+            </tr>
+            <tr>
+              <td><code>free-llm-router-fallback-1</code></td>
+              <td>Gemini · gemini-2.5-flash-lite</td>
+              <td>~15</td>
+              <td>~1,000</td>
+            </tr>
+            <tr>
+              <td><code>free-llm-router-fallback-2</code></td>
+              <td>OpenRouter · llama-3.3-70b:free</td>
+              <td>20</td>
+              <td>50 / 1,000*</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--text-muted)">
+        * OpenRouter free RPD rises to 1,000 after a $10 credit purchase.
+      </p>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <div class="container">
+      <div class="section-label">Quickstart</div>
+      <h2>Up in under five minutes</h2>
+      <div class="code-block">
+        <div class="code-header"><span>bash</span><span>install · configure · run</span></div>
+        <pre><span class="comment"># clone &amp; bootstrap</span>
+<span class="cmd">git clone</span> https://github.com/Mourad-Soltani/free-ai-gateway
+<span class="cmd">cd</span> free-ai-gateway &amp;&amp; <span class="cmd">./install.sh</span>
+
+<span class="comment"># add keys + generate master key</span>
+<span class="cmd">nano</span> .env
+<span class="cmd">python</span> -c <span class="flag">"import secrets; print('sk-' + secrets.token_urlsafe(32))"</span>
+
+<span class="comment"># launch proxy on :4000</span>
+<span class="cmd">./run.sh</span>
+
+<span class="comment"># query or run the agent</span>
+<span class="cmd">python</span> client.py <span class="flag">"Explain SQLite WAL in two bullets"</span>
+<span class="cmd">python</span> agents/agent.py <span class="flag">--task</span> <span class="flag">"Summarise today's free-tier status"</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="agent">
+    <div class="container">
+      <div class="section-label">AI Agent</div>
+      <h2>Gateway-native agent with tools</h2>
+      <p class="section-lead">
+        The included agent uses the Free AI Gateway for every LLM call. It supports multi-step
+        reasoning, quota-aware routing, and simple tools (time, stats, calculator).
+      </p>
+      <div class="agent-panel">
+        <div class="agent-header">
+          <span class="agent-dot"></span>
+          <strong style="font-size:0.9rem">Free AI Agent · demo</strong>
+          <span style="margin-left:auto;font-size:0.8rem;color:var(--text-muted)">routes via gateway</span>
+        </div>
+        <div class="agent-body" id="chat">
+          <div class="chat-msg agent">
+            <div class="role">Agent</div>
+            <div class="bubble">
+              Ready. I route through Free AI Gateway (Groq → Gemini → OpenRouter).
+              Ask me anything, or try: <em>“What is my current quota usage?”</em>
+            </div>
+          </div>
+        </div>
+        <div class="agent-input-row">
+          <input type="text" id="userInput" placeholder="Ask the agent…" autocomplete="off" />
+          <button class="btn btn-primary" id="sendBtn" type="button">Send</button>
+        </div>
+        <p class="agent-note">
+          This page demo is client-side only and does not call a live backend.
+          Run <code>python agents/agent.py</code> against your local gateway for real inference.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="container">
+      <div class="section-label">Commercial</div>
+      <h2>Open core · optional support</h2>
+      <p class="section-lead">
+        The software is MIT-licensed. Trademarks remain with Mourad Soltani Technologies™ @MST.
+        Support and turnkey setup are available.
+      </p>
+      <div class="pricing">
+        <div class="price-card">
+          <h3>Community</h3>
+          <div class="price">$0 <small>/ forever</small></div>
+          <p style="font-size:0.9rem;color:var(--text-muted)">Self-host the open core</p>
+          <ul>
+            <li>Full source · MIT</li>
+            <li>All providers &amp; failover</li>
+            <li>Docker · systemd · CI</li>
+            <li>Best-effort issues</li>
+          </ul>
+          <a href="https://github.com/Mourad-Soltani/free-ai-gateway" class="btn btn-ghost" style="width:100%;justify-content:center">Clone on GitHub</a>
+        </div>
+        <div class="price-card featured">
+          <h3>Professional</h3>
+          <div class="price">$499 <small>/ year</small></div>
+          <p style="font-size:0.9rem;color:var(--text-muted)">Priority support · 48h SLA</p>
+          <ul>
+            <li>Everything in Community</li>
+            <li>Direct email support</li>
+            <li>Config review</li>
+            <li>Upgrade guidance</li>
+          </ul>
+          <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/COMMERCIAL.md" class="btn btn-primary" style="width:100%;justify-content:center">See COMMERCIAL.md</a>
+        </div>
+        <div class="price-card">
+          <h3>Turnkey setup</h3>
+          <div class="price">$250–600</div>
+          <p style="font-size:0.9rem;color:var(--text-muted)">One-time install &amp; hardening</p>
+          <ul>
+            <li>Keys · TLS · reverse proxy</li>
+            <li>systemd / Docker deploy</li>
+            <li>Health &amp; metrics wiring</li>
+            <li>Handover notes</li>
+          </ul>
+          <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/COMMERCIAL.md" class="btn btn-ghost" style="width:100%;justify-content:center">Details</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <div class="cta-band">
+        <h2>Stop burning paid tokens on simple tasks</h2>
+        <p>Clone the repo, drop in three free API keys, and point your OpenAI SDK at localhost:4000.</p>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway" class="btn btn-primary">Star &amp; clone Free AI Gateway →</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <strong>Free AI Gateway™</strong><br />
+        © 2026 Mourad Soltani — Mourad Soltani Technologies™ @MST<br />
+        MIT licensed · trademarks reserved
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway">GitHub</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/COMMERCIAL.md">Commercial</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/TRADEMARK.md">Trademark</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/SECURITY.md">Security</a>
+        <a href="https://github.com/Mourad-Soltani/free-ai-gateway/blob/main/LICENSE">License</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const chat = document.getElementById("chat");
+      const input = document.getElementById("userInput");
+      const btn = document.getElementById("sendBtn");
+
+      const replies = {
+        quota: "Local tracker reports RPM/RPD per provider (groq, gemini, openrouter). Run <code>python client.py --stats</code> against a live gateway for live numbers.",
+        help: "I am a client-side demo. For real multi-step reasoning with tools, run <code>python agents/agent.py --task \"your goal\"</code> after starting the gateway.",
+        default: "This landing-page agent is offline by design. Start the proxy with <code>./run.sh</code>, then use <code>python agents/agent.py</code> for live free-tier inference via the gateway."
+      };
+
+      function addMsg(role, html) {
+        const div = document.createElement("div");
+        div.className = "chat-msg " + role;
+        div.innerHTML = '<div class="role">' + (role === "user" ? "You" : "Agent") + '</div><div class="bubble">' + html + "</div>";
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+
+      function respond(text) {
+        const t = text.toLowerCase();
+        let r = replies.default;
+        if (t.includes("quota") || t.includes("stats") || t.includes("usage")) r = replies.quota;
+        else if (t.includes("help") || t.includes("how")) r = replies.help;
+        setTimeout(function () { addMsg("agent", r); }, 400);
+      }
+
+      function send() {
+        const text = (input.value || "").trim();
+        if (!text) return;
+        addMsg("user", text.replace(/</g, "&lt;"));
+        input.value = "";
+        respond(text);
+      }
+
+      btn.addEventListener("click", send);
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") send();
+      });
+    })();
+  </script>
+</body>
+</html>

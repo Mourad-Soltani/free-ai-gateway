@@ -1,6 +1,6 @@
 # Free AI Gateway — task runner
 # Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
-.PHONY: help install run dev test test-health lint fmt clean docker docker-up docker-logs package stats health verify
+.PHONY: help install run dev test test-health lint fmt clean docker docker-up docker-logs package stats health verify agent landing
 
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  %-14s %s\n", $$1, $$2}'
@@ -47,6 +47,13 @@ health:
 
 stats:
 	./venv/bin/python client.py --stats
+
+agent:
+	./venv/bin/python agents/agent.py
+
+landing:
+	@echo "Open landing/index.html in a browser, or:"
+	@echo "  python -m http.server 8080 --directory landing"
 
 package: clean
 	cd .. && zip -r free-ai-gateway.zip free-ai-gateway \
