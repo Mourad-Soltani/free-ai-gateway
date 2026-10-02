@@ -87,6 +87,17 @@ Multi-step tool agent that routes through the gateway:
 
 Tools: `utc_now`, `calculator`, `quota_stats`, `echo`. See [agents/README.md](agents/README.md).
 
+## Control plane (multi-tenant, optional)
+
+Edge proxy on **:4100** with virtual keys (`sk-fag-...`), per-tenant RPM/RPD, and admin API.
+LiteLLM remains on :4000 with the master key.
+
+    ./run.sh                  # free-tier router
+    ./run_control_plane.sh    # multi-tenant edge
+    python -m control_plane.cli tenant create "Acme"
+
+See [docs/CONTROL_PLANE.md](docs/CONTROL_PLANE.md).
+
 ## Quota Shield (optional)
 
 Optional **Jev / TypeSafe** decision layer runs *before* free LLM calls so spam

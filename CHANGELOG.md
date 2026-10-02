@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0] — 2026-10-03
+### Added
+- Multi-tenant **control plane** (`control_plane/`) — virtual keys, per-tenant RPM/RPD
+- Edge proxy `:4100` → LiteLLM `:4000` with master key
+- CLI: `python -m control_plane.cli`
+- docs/CONTROL_PLANE.md
+
 ## [1.2.2] — 2026-10-03
 ### Added
 - Optional Quota Shield (Jev / TypeSafe) — `providers/typesafe.py`

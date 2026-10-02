@@ -25,3 +25,7 @@ build/
 *.zip
 *.tar.gz
 .dockerignore
+
+control_plane.db
+control_plane.db-*
+

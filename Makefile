@@ -64,3 +64,9 @@ package: clean
 	     "free-ai-gateway/api_limits.db*" \
 	     "free-ai-gateway/.pytest_cache/*" \
 	     "free-ai-gateway/.ruff_cache/*"
+
+control-plane: ## Run multi-tenant edge on :4100
+	./run_control_plane.sh
+
+cp-cli: ## Example: python -m control_plane.cli tenant list
+	./venv/bin/python -m control_plane.cli tenant list
