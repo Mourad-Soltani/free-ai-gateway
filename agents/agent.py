@@ -5,6 +5,10 @@ agents/agent.py — Free AI Gateway native agent (tool-using, multi-step).
 Routes every LLM call through the Free AI Gateway (Groq → Gemini → OpenRouter)
 with local quota accounting. Includes simple tools: time, calculator, quota stats.
 
+Optional Quota Shield (Jev / TypeSafe): when JEV_ENABLED=true, classifies the
+task before any free-LLM call so spam/low-urgency prompts do not burn RPM/RPD.
+Core gateway works with Jev off (default).
+
 Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
 Usage:
   python agents/agent.py --task "What is 17 * 23 and current UTC time?"
@@ -188,8 +192,42 @@ def run_agent(
     max_steps: int = 6,
     temperature: float = 0.2,
     verbose: bool = True,
+    use_jev: bool | None = None,
 ) -> str:
-    """Multi-step tool loop. Returns final natural-language answer."""
+    """Multi-step tool loop. Returns final natural-language answer.
+
+    Optional Jev quota shield (see providers/typesafe.py): when enabled, SPAM or
+    low-urgency tasks return early without calling free LLM providers.
+    """
+    # --- optional Quota Shield (Jev) — never required ---
+    if use_jev is None:
+        use_jev = True  # honour env; call_jev no-ops when disabled
+    if use_jev:
+        try:
+            from providers.typesafe import call_jev, jev_enabled
+
+            if jev_enabled():
+                decision = call_jev(task)
+                if verbose:
+                    log.info(
+                        "quota shield: route=%s urgency=%.2f skipped=%s reason=%s",
+                        decision.route,
+                        decision.urgency,
+                        decision.skipped,
+                        decision.reason,
+                    )
+                if not decision.allow_llm:
+                    msg = (
+                        f"[quota-shield] Dropped before free LLM "
+                        f"(route={decision.route}, urgency={decision.urgency:.2f}). "
+                        "Free-tier RPM/RPD not consumed."
+                    )
+                    if verbose:
+                        print(msg)
+                    return msg
+        except Exception as exc:
+            log.warning("quota shield error (continuing to LLM): %s", exc)
+
     messages: list[dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": task},
@@ -229,7 +267,7 @@ def run_agent(
     return "Agent stopped: max steps reached without a final answer."
 
 
-def interactive_loop() -> int:
+def interactive_loop(*, use_jev: bool = True) -> int:
     print("Free AI Agent (interactive). Commands: /stats  /quit")
     print("Gateway:", os.getenv("GATEWAY_URL", "http://localhost:4000"))
     while True:
@@ -246,7 +284,7 @@ def interactive_loop() -> int:
             print(tool_quota_stats(""))
             continue
         try:
-            answer = run_agent(line, verbose=True)
+            answer = run_agent(line, verbose=True, use_jev=use_jev)
             print(f"\nAgent> {answer}")
         except Exception as exc:
             log.error("%s", exc)
@@ -263,6 +301,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-steps", type=int, default=6)
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--no-jev",
+        action="store_true",
+        help="Disable optional Jev quota shield for this run",
+    )
     args = parser.parse_args(argv)
 
     if args.interactive or not args.task:
@@ -274,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"No --task given; running demo:\n  {demo}\n")
             try:
-                print(run_agent(demo, max_steps=args.max_steps, temperature=args.temperature, verbose=not args.quiet))
+                print(run_agent(demo, max_steps=args.max_steps, temperature=args.temperature, verbose=not args.quiet, use_jev=not args.no_jev))
                 return 0
             except Exception as exc:
                 log.error("%s", exc)
@@ -283,7 +326,7 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return 1
-        return interactive_loop()
+        return interactive_loop(use_jev=not args.no_jev)
 
     try:
         out = run_agent(
@@ -291,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
             max_steps=args.max_steps,
             temperature=args.temperature,
             verbose=not args.quiet,
+            use_jev=not args.no_jev,
         )
         print(out)
         return 0

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.2] — 2026-10-03
+### Added
+- Optional Quota Shield (Jev / TypeSafe) — `providers/typesafe.py`
+- Agent gate: drop SPAM/low-urgency before free LLM (`JEV_ENABLED`, `--no-jev`)
+- docs/QUOTA_SHIELD.md
+
+### Notes
+- Shield is **off by default**; fail-open on Jev errors
+- Not registered as free-llm-router
+
 ## [1.2.1] — 2026-10-02
 ### Added
 - `landing/index.html` — product landing page (features, providers, agent demo, pricing)

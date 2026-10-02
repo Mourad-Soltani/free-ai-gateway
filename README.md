@@ -87,7 +87,18 @@ Multi-step tool agent that routes through the gateway:
 
 Tools: `utc_now`, `calculator`, `quota_stats`, `echo`. See [agents/README.md](agents/README.md).
 
+## Quota Shield (optional)
+
+Optional **Jev / TypeSafe** decision layer runs *before* free LLM calls so spam
+and low-urgency prompts do not consume Groq/Gemini/OpenRouter RPM/RPD.
+
+- **Default: off** — core gateway needs no TypeSafe key
+- Enable: `JEV_ENABLED=true` + `TYPESAFE_API_KEY` in `.env`
+- Agent: automatic when enabled; disable per run with `--no-jev`
+- Docs: [docs/QUOTA_SHIELD.md](docs/QUOTA_SHIELD.md)
+
 ## Commercial licensing
+
 
 See [COMMERCIAL.md](COMMERCIAL.md).
 
