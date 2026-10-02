@@ -210,6 +210,25 @@
       font-family: var(--font); font-size: 0.9rem;
     }
     .agent-input-row input:focus { outline: none; border-color: var(--accent); }
+
+    .agent-connect {
+      display: grid; grid-template-columns: 1fr 1fr auto;
+      gap: 0.5rem; padding: 0.85rem 1.15rem;
+      border-bottom: 1px solid var(--border); background: var(--bg);
+      align-items: center;
+    }
+    .agent-connect input {
+      background: var(--bg-elevated); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.5rem 0.75rem; color: var(--text);
+      font-family: var(--mono); font-size: 0.8rem; width: 100%;
+    }
+    .agent-connect input:focus { outline: none; border-color: var(--accent); }
+    .agent-dot.off { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    .agent-dot.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    @media (max-width: 640px) {
+      .agent-connect { grid-template-columns: 1fr; }
+    }
+
     .agent-note {
       font-size: 0.8rem; color: var(--text-muted); padding: 0 1.15rem 1rem;
     }
@@ -433,16 +452,21 @@
       </p>
       <div class="agent-panel">
         <div class="agent-header">
-          <span class="agent-dot"></span>
-          <strong style="font-size:0.9rem">Free AI Agent · demo</strong>
-          <span style="margin-left:auto;font-size:0.8rem;color:var(--text-muted)">routes via gateway</span>
+          <span class="agent-dot off" id="statusDot"></span>
+          <strong style="font-size:0.9rem">Free AI Agent</strong>
+          <span style="margin-left:auto;font-size:0.8rem;color:var(--text-muted)" id="statusLabel">offline — connect a gateway</span>
+        </div>
+        <div class="agent-connect">
+          <input type="url" id="gwUrl" placeholder="Gateway URL (e.g. http://127.0.0.1:4000)" autocomplete="off" />
+          <input type="password" id="gwKey" placeholder="LITELLM_MASTER_KEY" autocomplete="off" />
+          <button class="btn btn-ghost" id="connectBtn" type="button">Connect</button>
         </div>
         <div class="agent-body" id="chat">
           <div class="chat-msg agent">
             <div class="role">Agent</div>
             <div class="bubble">
-              Ready. I route through Free AI Gateway (Groq → Gemini → OpenRouter).
-              Ask me anything, or try: <em>“What is my current quota usage?”</em>
+              Connect your running Free AI Gateway above (URL + master key), then chat.
+              Keys stay in your browser only (localStorage). Without a gateway, I stay offline.
             </div>
           </div>
         </div>
@@ -451,8 +475,9 @@
           <button class="btn btn-primary" id="sendBtn" type="button">Send</button>
         </div>
         <p class="agent-note">
-          This page demo is client-side only and does not call a live backend.
-          Run <code>python agents/agent.py</code> against your local gateway for real inference.
+          Live mode calls <code>/v1/chat/completions</code> on your gateway (CORS must allow this origin).
+          Local default: start with <code>./run.sh</code>, connect to <code>http://127.0.0.1:4000</code>.
+          CLI agent: <code>python agents/agent.py --interactive</code>
         </p>
       </div>
     </div>
@@ -539,40 +564,160 @@
       const chat = document.getElementById("chat");
       const input = document.getElementById("userInput");
       const btn = document.getElementById("sendBtn");
+      const gwUrl = document.getElementById("gwUrl");
+      const gwKey = document.getElementById("gwKey");
+      const connectBtn = document.getElementById("connectBtn");
+      const statusDot = document.getElementById("statusDot");
+      const statusLabel = document.getElementById("statusLabel");
 
-      const replies = {
-        quota: "Local tracker reports RPM/RPD per provider (groq, gemini, openrouter). Run <code>python client.py --stats</code> against a live gateway for live numbers.",
-        help: "I am a client-side demo. For real multi-step reasoning with tools, run <code>python agents/agent.py --task \"your goal\"</code> after starting the gateway.",
-        default: "This landing-page agent is offline by design. Start the proxy with <code>./run.sh</code>, then use <code>python agents/agent.py</code> for live free-tier inference via the gateway."
-      };
+      const LS_URL = "fag_gateway_url";
+      const LS_KEY = "fag_gateway_key";
+      let live = false;
+      let history = [
+        {
+          role: "system",
+          content:
+            "You are Free AI Agent on Free AI Gateway™ (Mourad Soltani Technologies™ @MST). Be concise and helpful. You route via Groq → Gemini → OpenRouter free tiers."
+        }
+      ];
+
+      function setStatus(on, label) {
+        live = on;
+        statusDot.className = "agent-dot " + (on ? "on" : "off");
+        statusLabel.textContent = label;
+      }
 
       function addMsg(role, html) {
         const div = document.createElement("div");
         div.className = "chat-msg " + role;
-        div.innerHTML = '<div class="role">' + (role === "user" ? "You" : "Agent") + '</div><div class="bubble">' + html + "</div>";
+        div.innerHTML =
+          '<div class="role">' +
+          (role === "user" ? "You" : "Agent") +
+          '</div><div class="bubble">' +
+          html +
+          "</div>";
         chat.appendChild(div);
         chat.scrollTop = chat.scrollHeight;
       }
 
-      function respond(text) {
-        const t = text.toLowerCase();
-        let r = replies.default;
-        if (t.includes("quota") || t.includes("stats") || t.includes("usage")) r = replies.quota;
-        else if (t.includes("help") || t.includes("how")) r = replies.help;
-        setTimeout(function () { addMsg("agent", r); }, 400);
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
 
-      function send() {
+      async function callGateway(userText) {
+        const base = (gwUrl.value || "").replace(/\/$/, "");
+        const key = gwKey.value || "";
+        history.push({ role: "user", content: userText });
+        const res = await fetch(base + "/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + key
+          },
+          body: JSON.stringify({
+            model: "free-llm-router",
+            messages: history,
+            temperature: 0.4,
+            max_tokens: 512
+          })
+        });
+        if (!res.ok) {
+          const errText = await res.text().catch(function () { return res.statusText; });
+          throw new Error("HTTP " + res.status + ": " + errText.slice(0, 200));
+        }
+        const data = await res.json();
+        const reply =
+          (data.choices &&
+            data.choices[0] &&
+            data.choices[0].message &&
+            data.choices[0].message.content) ||
+          "(empty response)";
+        history.push({ role: "assistant", content: reply });
+        return reply;
+      }
+
+      function offlineReply(text) {
+        const t = text.toLowerCase();
+        if (t.indexOf("quota") >= 0 || t.indexOf("stats") >= 0 || t.indexOf("usage") >= 0) {
+          return "Offline mode has no quota ledger. Connect a running gateway (URL + master key above), then ask again — or run <code>python client.py --stats</code> locally.";
+        }
+        if (t.indexOf("connect") >= 0 || t.indexOf("how") >= 0 || t.indexOf("help") >= 0) {
+          return "1) <code>./run.sh</code> on your machine<br>2) Paste <code>http://127.0.0.1:4000</code> and your <code>LITELLM_MASTER_KEY</code><br>3) Click Connect, then chat. For tool-using agent: <code>python agents/agent.py -i</code>";
+        }
+        return "Still offline. Click <strong>Connect</strong> with your gateway URL and master key to enable live inference. Or use the CLI agent against a local proxy.";
+      }
+
+      async function connect() {
+        const base = (gwUrl.value || "").replace(/\/$/, "");
+        const key = gwKey.value || "";
+        if (!base) {
+          setStatus(false, "offline — enter gateway URL");
+          addMsg("agent", "Enter a gateway URL (example: <code>http://127.0.0.1:4000</code>).");
+          return;
+        }
+        connectBtn.disabled = true;
+        statusLabel.textContent = "checking…";
+        try {
+          const res = await fetch(base + "/health/liveliness", {
+            method: "GET",
+            headers: key ? { Authorization: "Bearer " + key } : {}
+          });
+          if (!res.ok) throw new Error("liveliness " + res.status);
+          localStorage.setItem(LS_URL, base);
+          localStorage.setItem(LS_KEY, key);
+          setStatus(true, "live · " + base.replace(/^https?:\/\//, ""));
+          addMsg("agent", "Connected to <code>" + escapeHtml(base) + "</code>. Ask away.");
+        } catch (e) {
+          setStatus(false, "offline — unreachable");
+          addMsg(
+            "agent",
+            "Could not reach gateway: " +
+              escapeHtml(e.message) +
+              "<br><br>If the proxy is local, allow CORS or open this page from the same host. GitHub Pages → localhost is blocked by browsers unless you use a tunnel (ngrok/cloudflared) or serve the landing from the gateway host."
+          );
+        } finally {
+          connectBtn.disabled = false;
+        }
+      }
+
+      async function send() {
         const text = (input.value || "").trim();
         if (!text) return;
-        addMsg("user", text.replace(/</g, "&lt;"));
+        addMsg("user", escapeHtml(text));
         input.value = "";
-        respond(text);
+        btn.disabled = true;
+        try {
+          if (live) {
+            const reply = await callGateway(text);
+            addMsg("agent", escapeHtml(reply).replace(/\\n/g, "<br>"));
+          } else {
+            addMsg("agent", offlineReply(text));
+          }
+        } catch (e) {
+          setStatus(false, "offline — error");
+          addMsg("agent", "Request failed: " + escapeHtml(e.message));
+        } finally {
+          btn.disabled = false;
+          input.focus();
+        }
       }
 
+      // restore saved credentials
+      const savedUrl = localStorage.getItem(LS_URL);
+      const savedKey = localStorage.getItem(LS_KEY);
+      if (savedUrl) gwUrl.value = savedUrl;
+      if (savedKey) gwKey.value = savedKey;
+
+      connectBtn.addEventListener("click", connect);
       btn.addEventListener("click", send);
       input.addEventListener("keydown", function (e) {
         if (e.key === "Enter") send();
+      });
+      gwKey.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") connect();
       });
     })();
   </script>
