@@ -56,8 +56,17 @@ def test_stats_aggregates_across_providers(tracker):
 
 
 def test_retention_prunes_old_rows(tmp_path):
-    t = APIRateTracker(str(tmp_path / "r.db"), retention_days=0)
+    db = str(tmp_path / "r.db")
+    t = APIRateTracker(db, retention_days=7)
     t.record_request("groq")
-    t2 = APIRateTracker(str(tmp_path / "r.db"), retention_days=0)
+    # Backdate the row so it falls outside the retention window
+    old_ts = time.time() - 10 * 86400
+    t._conn.execute(
+        "UPDATE api_usage SET timestamp = ?, date_str = ?;",
+        (old_ts, "2020-01-01"),
+    )
+    t.close()
+    # Re-open triggers prune of date_str older than retention
+    t2 = APIRateTracker(db, retention_days=7)
     assert t2.usage("groq")[0] == 0
-    t.close(); t2.close()
+    t2.close()

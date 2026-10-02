@@ -19,17 +19,16 @@ import logging
 import os
 import re
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
+
+from dotenv import load_dotenv
 
 # Allow running from repo root or agents/
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
-
-from dotenv import load_dotenv
 
 load_dotenv(_ROOT / ".env")
 
@@ -81,7 +80,7 @@ def tool_echo(text: str) -> str:
     return text
 
 
-TOOLS: Dict[str, Dict[str, Any]] = {
+TOOLS: dict[str, dict[str, Any]] = {
     "utc_now": {
         "fn": tool_utc_now,
         "description": "Return the current UTC timestamp (ISO-8601).",
@@ -116,7 +115,7 @@ def _tool_catalogue() -> str:
 # LLM via gateway client
 # ---------------------------------------------------------------------------
 
-def _call_llm(messages: List[Dict[str, str]], *, temperature: float = 0.2) -> str:
+def _call_llm(messages: list[dict[str, str]], *, temperature: float = 0.2) -> str:
     """Route chat completion through Free AI Gateway client (failover + quota)."""
     try:
         import client as gateway_client
@@ -164,20 +163,20 @@ def _call_llm(messages: List[Dict[str, str]], *, temperature: float = 0.2) -> st
 # Agent loop
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are Free AI Agent, a concise assistant that runs on Free AI Gateway™
+SYSTEM_PROMPT = f"""You are Free AI Agent, a concise assistant that runs on Free AI Gateway™
 (Mourad Soltani Technologies™ @MST). You have tools. When you need a tool, reply with EXACTLY one line:
 
 TOOL <name> <argument>
 
 Valid tools:
-{tools}
+{_tool_catalogue()}
 
 Rules:
 - Use a tool only when needed; otherwise answer directly.
 - After a tool result is provided, continue reasoning and either call another tool or give the final answer.
 - Final answers must NOT start with "TOOL ".
 - Keep answers short and factual.
-""".format(tools=_tool_catalogue())
+"""
 
 
 TOOL_RE = re.compile(r"^TOOL\s+(\w+)\s*(.*)$", re.IGNORECASE | re.DOTALL)
@@ -191,7 +190,7 @@ def run_agent(
     verbose: bool = True,
 ) -> str:
     """Multi-step tool loop. Returns final natural-language answer."""
-    messages: List[Dict[str, str]] = [
+    messages: list[dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": task},
     ]
@@ -254,7 +253,7 @@ def interactive_loop() -> int:
             print(f"Error: {exc}", file=sys.stderr)
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Free AI Gateway native agent (tools + multi-step).",
         epilog="Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST",

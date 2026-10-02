@@ -11,10 +11,10 @@ import os
 import sqlite3
 import threading
 import time
-from contextlib import contextmanager
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, Iterator, Optional, Tuple
 
 SCHEMA_VERSION = 1
 
@@ -40,7 +40,7 @@ _STATS_RPD = ("SELECT provider, COUNT(*) FROM api_usage "
               "WHERE date_str = ? GROUP BY provider;")
 
 
-def _utc_day(ts: Optional[float] = None) -> str:
+def _utc_day(ts: float | None = None) -> str:
     dt = datetime.fromtimestamp(ts, tz=timezone.utc) if ts else datetime.now(timezone.utc)
     return dt.strftime("%Y-%m-%d")
 
@@ -74,11 +74,11 @@ class APIRateTracker:
 
     def __init__(
         self,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
         *,
-        fail_open: Optional[bool] = None,
-        retention_days: Optional[int] = None,
-        busy_timeout_ms: Optional[int] = None,
+        fail_open: bool | None = None,
+        retention_days: int | None = None,
+        busy_timeout_ms: int | None = None,
     ) -> None:
         self.db_path = db_path or os.getenv("FREE_AI_DB_PATH", "api_limits.db")
         self.retention_days = retention_days if retention_days is not None \
@@ -121,10 +121,8 @@ class APIRateTracker:
             yield cur
             cur.execute("COMMIT;")
         except BaseException:
-            try:
+            with suppress(sqlite3.Error):
                 cur.execute("ROLLBACK;")
-            except sqlite3.Error:
-                pass
             raise
         finally:
             cur.close()
@@ -162,7 +160,7 @@ class APIRateTracker:
         except sqlite3.Error as exc:
             log.error("failed to record usage for %s: %s", provider, exc)
 
-    def usage(self, provider: str) -> Tuple[int, int]:
+    def usage(self, provider: str) -> tuple[int, int]:
         now = time.time()
         try:
             cur = self._conn.cursor()

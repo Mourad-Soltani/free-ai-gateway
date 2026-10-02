@@ -11,7 +11,7 @@ import logging
 import os
 import random
 import sys
-from typing import AsyncIterator, List, Optional
+from collections.abc import AsyncIterator
 
 import openai
 from dotenv import load_dotenv
@@ -50,7 +50,7 @@ def _backoff(attempt: int, base: float = 1.0) -> float:
     return min(BACKOFF_CAP, base * (2 ** (attempt - 1))) + random.uniform(0.0, 0.5)
 
 
-def _status_of(exc: Exception) -> Optional[int]:
+def _status_of(exc: Exception) -> int | None:
     for attr in ("status_code", "http_status", "code"):
         val = getattr(exc, attr, None)
         if isinstance(val, int):
@@ -79,7 +79,7 @@ async def query_llm_async(prompt: str, *, system=None, temperature=0.7,
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    failures: List[str] = []
+    failures: list[str] = []
 
     for provider in PROVIDERS:
         if not await asyncio.to_thread(

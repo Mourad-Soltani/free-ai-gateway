@@ -12,8 +12,8 @@ import os
 import random
 import sys
 import time
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, List, Optional
 
 import openai
 from dotenv import load_dotenv
@@ -41,7 +41,7 @@ class Provider:
 
 _OR_CREDIT = os.getenv("OPENROUTER_CREDIT_PURCHASED", "").lower() in {"1", "true", "yes"}
 
-PROVIDERS: List[Provider] = [
+PROVIDERS: list[Provider] = [
     Provider("groq",       "free-llm-router",             30, 1000,
              "llama-3.3-70b-versatile · 30 RPM / 1,000 RPD"),
     Provider("gemini",     "free-llm-router-fallback-1",  15, 1000,
@@ -65,7 +65,7 @@ def _backoff(attempt: int, base: float = 1.0) -> float:
     return min(BACKOFF_CAP, base * (2 ** (attempt - 1))) + random.uniform(0.0, 0.5)
 
 
-def _status_of(exc: Exception) -> Optional[int]:
+def _status_of(exc: Exception) -> int | None:
     for attr in ("status_code", "http_status", "code"):
         val = getattr(exc, attr, None)
         if isinstance(val, int):
@@ -78,7 +78,7 @@ def _status_of(exc: Exception) -> Optional[int]:
     return None
 
 
-def _retry_after(exc: Exception) -> Optional[float]:
+def _retry_after(exc: Exception) -> float | None:
     resp = getattr(exc, "response", None)
     if resp is None:
         return None
@@ -102,7 +102,7 @@ def _is_transient(exc: Exception) -> bool:
     return status in TRANSIENT_STATUS if status else False
 
 
-def _build_messages(prompt: str, system: Optional[str]) -> list:
+def _build_messages(prompt: str, system: str | None) -> list:
     msgs = []
     if system:
         msgs.append({"role": "system", "content": system})
@@ -131,7 +131,7 @@ def _handle_exception(exc, provider, attempt, max_retries, failures) -> bool:
 def query_llm(prompt, *, system=None, temperature=0.7, max_tokens=None,
               max_retries_per_provider=3, timeout=60.0) -> str:
     messages = _build_messages(prompt, system)
-    failures: List[str] = []
+    failures: list[str] = []
     for provider in PROVIDERS:
         if not tracker.is_allowed(provider.name, provider.max_rpm, provider.max_rpd):
             log.info("skip %-10s — local quota window exhausted", provider.name)
@@ -209,7 +209,8 @@ def main(argv=None) -> int:
                                      temperature=args.temperature,
                                      max_tokens=args.max_tokens,
                                      timeout=args.timeout):
-                sys.stdout.write(chunk); sys.stdout.flush()
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
             print()
         else:
             out = query_llm(args.prompt, system=args.system,
