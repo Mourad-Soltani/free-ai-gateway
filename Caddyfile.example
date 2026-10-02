@@ -1,0 +1,19 @@
+# Free AI Gateway — Caddy example (automatic HTTPS)
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+api.example.com {
+    encode zstd gzip
+
+    reverse_proxy 127.0.0.1:4000 {
+        flush_interval -1
+        health_uri  /health/liveliness
+        health_interval 30s
+        transport http {
+            read_timeout 120s
+        }
+    }
+
+    log {
+        output file /var/log/caddy/free-ai-gateway.log
+        format json
+    }
+}

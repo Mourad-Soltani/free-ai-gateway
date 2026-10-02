@@ -1,0 +1,47 @@
+# Free AI Gateway — systemd unit
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+[Unit]
+Description=Free AI Gateway — LiteLLM Proxy Daemon
+Documentation=https://github.com/mouradsoltani/free-ai-gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/free-ai-gateway
+EnvironmentFile=/var/www/free-ai-gateway/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=HOST=127.0.0.1
+Environment=PORT=4000
+Environment=WORKERS=4
+
+ExecStart=/var/www/free-ai-gateway/venv/bin/litellm --config /var/www/free-ai-gateway/config.yaml --host ${HOST} --port ${PORT} --num_workers ${WORKERS}
+
+ExecStartPost=/bin/sh -c 'for i in $(seq 1 30); do /var/www/free-ai-gateway/venv/bin/python /var/www/free-ai-gateway/healthcheck.py --level live && exit 0; sleep 1; done; exit 1'
+
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+StandardOutput=append:/var/log/free-ai-gateway.log
+StandardError=append:/var/log/free-ai-gateway.error.log
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+ReadWritePaths=/var/www/free-ai-gateway /var/log
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,26 @@
+# Free AI Gateway — templated unit for multi-instance deployments
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+[Unit]
+Description=Free AI Gateway (instance %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/free-ai-gateway-%i
+EnvironmentFile=/etc/free-ai-gateway/%i.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/var/www/free-ai-gateway-%i/venv/bin/litellm --config /var/www/free-ai-gateway-%i/config.yaml --host ${HOST} --port ${PORT} --num_workers ${WORKERS}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/free-ai-gateway-%i /var/log
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

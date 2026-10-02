@@ -1,0 +1,17 @@
+# Free AI Gateway — Prometheus scrape config
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'litellm-proxy'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:4000']
+        labels:
+          service: 'free-ai-gateway'
+          tier: 'gateway'
+          author: 'mourad-soltani'
+          year: '2026'

@@ -1,0 +1,63 @@
+# Free AI Gateway — LiteLLM routing configuration
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+
+model_list:
+  - model_name: free-llm-router
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+      rpm: 30
+      tpm: 12000
+      timeout: 60
+    model_info:
+      tier: 0
+      provider_label: groq
+      free_rpd: 1000
+
+  - model_name: free-llm-router-fallback-1
+    litellm_params:
+      model: gemini/gemini-2.5-flash-lite
+      api_key: os.environ/GEMINI_API_KEY
+      rpm: 15
+      tpm: 1000000
+      timeout: 60
+    model_info:
+      tier: 1
+      provider_label: gemini
+      free_rpd: 1000
+
+  - model_name: free-llm-router-fallback-2
+    litellm_params:
+      model: openrouter/meta-llama/llama-3.3-70b-instruct:free
+      api_key: os.environ/OPENROUTER_API_KEY
+      rpm: 20
+      timeout: 60
+    model_info:
+      tier: 2
+      provider_label: openrouter
+      free_rpd: 50
+      enhanced_rpd: 1000
+
+router_settings:
+  fallbacks:
+    - free-llm-router:
+        ["free-llm-router-fallback-1", "free-llm-router-fallback-2"]
+    - free-llm-router-fallback-1:
+        ["free-llm-router-fallback-2", "free-llm-router"]
+    - free-llm-router-fallback-2:
+        ["free-llm-router", "free-llm-router-fallback-1"]
+  routing_strategy: simple-shuffle
+  num_retries: 3
+  retry_after: 5
+  allowed_fails: 2
+  cooldown_time: 60
+  request_timeout: 60
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+
+general_settings:
+  telemetry: false
+  prometheus_metrics: true
+  master_key: os.environ/LITELLM_MASTER_KEY

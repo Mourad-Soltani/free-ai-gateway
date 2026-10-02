@@ -1,0 +1,42 @@
+# Free AI Gateway — compose stack
+# Author: Mourad Soltani — © 2026 Mourad Soltani Technologies™ @MST
+services:
+  gateway:
+    build: .
+    image: free-ai-gateway:latest
+    container_name: free-ai-gateway
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 4000
+      WORKERS: 2
+      FREE_AI_DB_PATH: /data/api_limits.db
+    ports:
+      - "127.0.0.1:4000:4000"
+    volumes:
+      - gateway-data:/data
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4000/health/liveliness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: free-ai-gateway-prom
+    restart: unless-stopped
+    profiles: ["observability"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on:
+      - gateway
+
+volumes:
+  gateway-data:
+  prom-data:
