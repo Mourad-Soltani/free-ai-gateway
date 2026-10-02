@@ -1,8 +1,15 @@
 # Free AI Gateway™
 
-> Author: **Mourad Soltani** — *AGI Architect*
-> Trademark: **Mourad Soltani Technologies™ @MST**
-> License: MIT · Version: 1.2.0 · Year: 2026 · Status: Production-Ready
+[![CI](https://github.com/Mourad-Soltani/free-ai-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/Mourad-Soltani/free-ai-gateway/actions/workflows/ci.yml)
+[![Pages](https://github.com/Mourad-Soltani/free-ai-gateway/actions/workflows/pages.yml/badge.svg)](https://github.com/Mourad-Soltani/free-ai-gateway/actions/workflows/pages.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/Mourad-Soltani/free-ai-gateway?include_prereleases&sort=semver)](https://github.com/Mourad-Soltani/free-ai-gateway/releases)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+
+> Author: **Mourad Soltani** — *AGI Architect*  
+> Trademark: **Mourad Soltani Technologies™ @MST**  
+> License: MIT · Version: **1.2.1** · Year: 2026 · Status: Production-Ready  
+> Site: [mourad-soltani.github.io/free-ai-gateway](https://mourad-soltani.github.io/free-ai-gateway/)
 
 An OpenAI-compatible HTTP proxy that fuses the free tiers of Groq,
 Google AI Studio (Gemini), and OpenRouter into a single, high-availability
@@ -41,7 +48,7 @@ Exit codes: 0 healthy · 1 unreachable · 2 degraded · 3 DB error · 4 upstream
 
 ## Quickstart
 
-    git clone https://github.com/mouradsoltani/free-ai-gateway
+    git clone https://github.com/Mourad-Soltani/free-ai-gateway
     cd free-ai-gateway
     ./install.sh
     nano .env
